@@ -3,30 +3,31 @@ module CommandLine exposing (fuzzyScore, fuzzyMatch)
 import Char
 
 
-fuzzyScore : String -> String -> Int
+fuzzyScore : String -> String -> (Int, List Bool)
 fuzzyScore target input =
     let
 
+        maybeFunction : (Char, String) -> (Char, String) -> (Int, List Bool)
         maybeFunction (t, tRest) (i, iRest) =
             let
-                charFunction : Char -> Char -> (Int, String)
-                charFunction tChar tInput =
-                    if Char.toLower tChar == Char.toLower tInput then
-                        (1, iRest)
+                (score, match) =
+                    if Char.toLower t == Char.toLower i then
+                        (1, True)
                     else
-                        (0, input)
+                        (0, False)
 
-                (charScore, rest) = 
-                    (charFunction t i)
+                rest = if match then iRest else input
+
+                (restScore, restMatches) = fuzzyScore tRest rest
             in
-                 charScore + fuzzyScore tRest rest
+                 (score + restScore, match :: restMatches)
 
     in
         case Maybe.map2 maybeFunction (String.uncons target) (String.uncons input) of
             Just val ->
                 val
             Nothing ->
-                0
+                (0, [])
 
 
 
