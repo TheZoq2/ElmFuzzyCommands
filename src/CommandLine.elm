@@ -2,6 +2,10 @@ module CommandLine exposing (fuzzyScore, fuzzyMatch)
 
 import Char
 
+type Command a
+    = Terminal (List String) (String -> Maybe a)
+    | NonTerminal (List String) (String -> (Command a))
+
 
 fuzzyScore : String -> String -> (Int, List Bool)
 fuzzyScore target input =
