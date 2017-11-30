@@ -6,13 +6,14 @@ import Html.Events exposing (onInput)
 
 import CommandLine
 
-searchOptions : List String
+searchOptions : List (String, Int)
 searchOptions =
-    [ "removeTag"
-    , "toggleTag"
-    , "toggleGroup"
-    , "removeGroup"
-    , "addTag"
+    [ ("removeTag", 1)
+    , ("toggleTag", 2)
+    , ("toggleGroup", 3)
+    , ("removeGroup", 4)
+    , ("addTag", 5)
+    , ("hideUi", 5)
     ]
 
 type Msg =
@@ -20,7 +21,7 @@ type Msg =
 
 
 type alias Model =
-    { queryResult: List String}
+    { queryResult: List (String, List Bool)}
 
 
 init : (Model, Cmd Msg)
@@ -48,11 +49,27 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
+    let
+        matchRenderer : (String, List Bool) -> Html Msg
+        matchRenderer (string, matches) =
+            let
+                charRenderer (char, match) =
+                    ( if match then
+                        b []
+                      else
+                        span []
+                    ) [text <| String.fromChar char]
+            in
+            p
+                []
+                <| List.map charRenderer
+                    <| List.map2 (,) (String.toList string) matches
+    in
     div
         []
         [ input [onInput Input] []
         , ul []
-            <| List.map (\string -> p [] [text string]) model.queryResult
+            <| List.map matchRenderer model.queryResult
         ]
 
 

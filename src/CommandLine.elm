@@ -7,6 +7,7 @@ type Command a
     | NonTerminal (List String) (String -> (Command a))
 
 
+
 fuzzyScore : String -> String -> (Int, List Bool)
 fuzzyScore target input =
     let
@@ -20,28 +21,32 @@ fuzzyScore target input =
                     else
                         (0, False)
 
-                rest = if match then iRest else input
+                restInput = if match then iRest else input
 
-                (restScore, restMatches) = fuzzyScore tRest rest
+                (restScore, restMatches) = fuzzyScore tRest restInput
             in
-                 (score + restScore, match :: restMatches)
+                (score + restScore, match :: restMatches)
 
     in
         case Maybe.map2 maybeFunction (String.uncons target) (String.uncons input) of
             Just val ->
                 val
             Nothing ->
-                (0, [])
+                (0, List.repeat (String.length target) False)
 
 
 
-fuzzyMatch : (String -> String -> Int) -> List String -> String -> List String
+fuzzyMatch :
+            (String -> String -> (Int, List Bool))
+            -> List (String, msg)
+            -> String
+            -> List ((String, msg), List Bool)
 fuzzyMatch scoringFunction options query =
     let
         withScores =
             List.map2 (\x y -> (x,y)) options
                 <| List.map 
-                    (\option -> scoringFunction option query) options
+                    (\option -> scoringFunction (Tuple.first option) query) options
     in
-        List.map (\(string, _) -> string)
-            <| List.sortBy (\(_, score) -> score) withScores
+        List.map (\(string, (_, matched)) -> (string, matched))
+            <| List.sortBy (\(_, (score, _)) -> score) withScores
