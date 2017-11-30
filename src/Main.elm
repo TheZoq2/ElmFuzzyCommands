@@ -5,16 +5,39 @@ import Html
 import Html.Events exposing (onInput)
 
 import CommandLine
+import CommandLine exposing (Command (..))
 
-searchOptions : List (String, Int)
+searchOptions : List String
 searchOptions =
-    [ ("removeTag", 1)
-    , ("toggleTag", 2)
-    , ("toggleGroup", 3)
-    , ("removeGroup", 4)
-    , ("addTag", 5)
-    , ("hideUi", 5)
+    [ "removeTag"
+    , "toggleTag"
+    , "toggleGroup"
+    , "removeGroup"
+    , "addTag"
+    , "hideUi"
     ]
+
+
+type CommandTest
+    = RemoveTag String
+    | ToggleTag String
+    | RemoveGroup Int Int
+    | HideUi
+
+
+topLevelCommand : List String -> Command CommandTest
+topLevelCommand tags =
+    NonTerminal ["hideUi", "toggleTag", "removeTag", "removeGroup"]
+        (\str ->
+            let
+                tagCommand tag = Just ("", ToggleTag tag)
+                intCommand str =
+                    Result.toMaybe <| String.toInt str
+            in
+                case str of
+                    "hideUi" -> Terminal HideUi
+                    "toggleTag" -> NonTerminal tags (Terminal tagCommand)
+        )
 
 type Msg =
     Input String

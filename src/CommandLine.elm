@@ -1,10 +1,33 @@
-module CommandLine exposing (fuzzyScore, fuzzyMatch)
+module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..))
 
 import Char
 
 type Command a
-    = Terminal (List String) (String -> Maybe a)
-    | NonTerminal (List String) (String -> (Command a))
+    = Terminal a
+    | NonTerminal (List String) (String -> Maybe (String, Command a))
+
+
+type ParseResult a
+    = Ok a
+    | InvalidParameter
+    | MissingParameters (Command a)
+    | ExtraParameters
+
+parseCommand : String -> Command a -> ParseResult a
+parseCommand query command =
+    case command of
+        Terminal val ->
+            case query of
+                "" ->
+                    Ok val
+                _ ->
+                    ExtraParameters
+        NonTerminal suggestions parsingFunction ->
+            case (parsingFunction query) of
+                Just (restQuery, command) ->
+                    parseCommand restQuery command
+                Nothing ->
+                    InvalidParameter
 
 
 
@@ -38,15 +61,15 @@ fuzzyScore target input =
 
 fuzzyMatch :
             (String -> String -> (Int, List Bool))
-            -> List (String, msg)
+            -> List String
             -> String
-            -> List ((String, msg), List Bool)
+            -> List (String, List Bool)
 fuzzyMatch scoringFunction options query =
     let
         withScores =
             List.map2 (\x y -> (x,y)) options
                 <| List.map 
-                    (\option -> scoringFunction (Tuple.first option) query) options
+                    (\option -> scoringFunction option query) options
     in
         List.map (\(string, (_, matched)) -> (string, matched))
             <| List.sortBy (\(_, (score, _)) -> score) withScores
