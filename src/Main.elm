@@ -28,41 +28,72 @@ type CommandTest
 topLevelCommand : List String -> Command CommandTest
 topLevelCommand tags =
     NonTerminal ["hideUi", "toggleTag", "removeTag", "removeGroup"]
-        (\str ->
+        (\query ->
             let
-                tagCommand tag = Just ("", ToggleTag tag)
+                tagCommand = NonTerminal tags (\query -> Just ("", Terminal <| ToggleTag query))
                 intCommand str =
                     Result.toMaybe <| String.toInt str
+
+                words = String.words query
+                (firstParam) = List.head words
+                (restParams) = String.concat <| Maybe.withDefault [] <| List.tail words
+
+                command =
+                    case firstParam of
+                        Just "hideUi" -> Just <| Terminal HideUi
+                        Just "toggleTag" -> Just <| tagCommand
+                        _ -> Nothing
             in
-                case str of
-                    "hideUi" -> Terminal HideUi
-                    "toggleTag" -> NonTerminal tags (Terminal tagCommand)
+                case command of
+                    Just command ->
+                        Just (restParams, command)
+                    Nothing ->
+                        Nothing
         )
 
-type Msg =
-    Input String
+type Msg
+    = Input String
 
 
 type alias Model =
-    { queryResult: List (String, List Bool)}
+    { queryResult: List (String, List Bool)
+    , commandResult: String
+    }
 
 
 init : (Model, Cmd Msg)
 init =
-    (Model [], Cmd.none)
+    (Model [] "", Cmd.none)
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         Input query ->
-            ({model | 
-                queryResult =
+            let
+                fuzzyResult =
                     CommandLine.fuzzyMatch
                         CommandLine.fuzzyScore
                         searchOptions
                         query
-            }, Cmd.none)
+
+                parsedCommand = CommandLine.parseCommand
+                    query
+                    <| topLevelCommand ["yolo", "swag"]
+
+                commandResult =
+                    case parsedCommand of
+                        Ok HideUi -> 
+                            "hideUi"
+                        Ok (ToggleTag tag) ->
+                            "toggleTag " ++ tag
+                        _ ->
+                            ""
+            in
+                ({model | 
+                    queryResult = fuzzyResult,
+                    commandResult = commandResult
+                }, Cmd.none)
 
 
 subscriptions : Model -> Sub Msg
@@ -93,6 +124,7 @@ view model =
         [ input [onInput Input] []
         , ul []
             <| List.map matchRenderer model.queryResult
+        , p [] [text model.commandResult]
         ]
 
 

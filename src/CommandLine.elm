@@ -1,4 +1,4 @@
-module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..))
+module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..), parseCommand, ParseError(..))
 
 import Char
 
@@ -7,13 +7,12 @@ type Command a
     | NonTerminal (List String) (String -> Maybe (String, Command a))
 
 
-type ParseResult a
-    = Ok a
-    | InvalidParameter
+type ParseError a
+    = InvalidParameter
     | MissingParameters (Command a)
     | ExtraParameters
 
-parseCommand : String -> Command a -> ParseResult a
+parseCommand : String -> Command a -> Result (ParseError a) a
 parseCommand query command =
     case command of
         Terminal val ->
@@ -21,13 +20,13 @@ parseCommand query command =
                 "" ->
                     Ok val
                 _ ->
-                    ExtraParameters
+                    Err ExtraParameters
         NonTerminal suggestions parsingFunction ->
             case (parsingFunction query) of
                 Just (restQuery, command) ->
                     parseCommand restQuery command
                 Nothing ->
-                    InvalidParameter
+                    Err InvalidParameter
 
 
 
