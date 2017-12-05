@@ -24,6 +24,41 @@ type CommandTest
     | RemoveGroup Int Int
     | HideUi
 
+intReference : (Int -> CommandTest) -> Command CommandTest
+intReference msg =
+    NonTerminal []
+        (\query ->
+            let
+                words = String.words query
+                firstParam = List.head words
+                restParams = String.concat <| Maybe.withDefault [] <| List.tail words
+
+                firstInt = Maybe.andThen (\str -> Result.toMaybe <| String.toInt str) firstParam
+            in
+                case firstInt of
+                    Just val ->
+                        Just(restParams, Terminal (msg val))
+                    Nothing ->
+                        Nothing
+        )
+
+groupReference : (Int -> Int -> CommandTest) -> Command CommandTest
+groupReference msg =
+    NonTerminal []
+        (\query ->
+            let
+                words = String.words query
+                firstParam = List.head words
+                restParams = String.concat <| Maybe.withDefault [] <| List.tail words
+
+                firstInt = Maybe.andThen (\str -> Result.toMaybe <| String.toInt str) firstParam
+            in
+                case firstInt of
+                    Just val ->
+                        Just(restParams, intReference (msg val))
+                    Nothing ->
+                        Nothing
+        )
 
 topLevelCommand : List String -> Command CommandTest
 topLevelCommand tags =
@@ -31,8 +66,6 @@ topLevelCommand tags =
         (\query ->
             let
                 tagCommand = NonTerminal tags (\query -> Just ("", Terminal <| ToggleTag query))
-                intCommand str =
-                    Result.toMaybe <| String.toInt str
 
                 words = String.words query
                 (firstParam) = List.head words
@@ -42,6 +75,7 @@ topLevelCommand tags =
                     case firstParam of
                         Just "hideUi" -> Just <| Terminal HideUi
                         Just "toggleTag" -> Just <| tagCommand
+                        Just "removeGroup" -> Just <| groupReference RemoveGroup
                         _ -> Nothing
             in
                 case command of
