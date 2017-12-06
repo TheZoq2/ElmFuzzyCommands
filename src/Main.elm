@@ -24,40 +24,59 @@ type CommandTest
     | RemoveGroup Int Int
     | HideUi
 
+separateFirstWord : String -> Maybe (String, String)
+separateFirstWord query =
+    let
+        words = String.words query
+        first = List.head words
+        rest = List.tail words
+    in
+        case (first, rest) of
+            (Just first, Just rest) -> Just (first, String.join " " rest)
+            _ -> Nothing
+
+
+parseFirstWord : (String -> Maybe a) -> String -> Maybe (String, a)
+parseFirstWord parser query =
+    case separateFirstWord query of
+        Just (first, rest) ->
+            case parser first of
+                Just val ->
+                    Just (rest, val)
+                Nothing ->
+                    Nothing
+        Nothing ->
+            Nothing
+
+
+intParser : String -> Maybe Int
+intParser word =
+    Result.toMaybe <| String.toInt word
+
 intReference : (Int -> CommandTest) -> Command CommandTest
 intReference msg =
     NonTerminal []
         (\query ->
-            let
-                words = String.words query
-                firstParam = List.head words
-                restParams = String.concat <| Maybe.withDefault [] <| List.tail words
-
-                firstInt = Maybe.andThen (\str -> Result.toMaybe <| String.toInt str) firstParam
-            in
-                case firstInt of
-                    Just val ->
-                        Just(restParams, Terminal (msg val))
-                    Nothing ->
-                        Nothing
+            case parseFirstWord intParser query of
+                Just (rest, val) ->
+                    let
+                        _ = Debug.log "rest" rest
+                        _ = Debug.log "val" val
+                    in
+                    Just(rest, Terminal (msg val))
+                Nothing ->
+                    Nothing
         )
 
 groupReference : (Int -> Int -> CommandTest) -> Command CommandTest
 groupReference msg =
     NonTerminal []
         (\query ->
-            let
-                words = String.words query
-                firstParam = List.head words
-                restParams = String.concat <| Maybe.withDefault [] <| List.tail words
-
-                firstInt = Maybe.andThen (\str -> Result.toMaybe <| String.toInt str) firstParam
-            in
-                case firstInt of
-                    Just val ->
-                        Just(restParams, intReference (msg val))
-                    Nothing ->
-                        Nothing
+            case parseFirstWord intParser query of
+                Just (rest, val) ->
+                    Just(rest, intReference (msg val))
+                Nothing ->
+                    Nothing
         )
 
 topLevelCommand : List String -> Command CommandTest
@@ -67,22 +86,15 @@ topLevelCommand tags =
             let
                 tagCommand = NonTerminal tags (\query -> Just ("", Terminal <| ToggleTag query))
 
-                words = String.words query
-                (firstParam) = List.head words
-                (restParams) = String.concat <| Maybe.withDefault [] <| List.tail words
-
-                command =
+                commandParser firstParam =
                     case firstParam of
-                        Just "hideUi" -> Just <| Terminal HideUi
-                        Just "toggleTag" -> Just <| tagCommand
-                        Just "removeGroup" -> Just <| groupReference RemoveGroup
+                        "hideUi" -> Just <| Terminal HideUi
+                        "toggleTag" -> Just <| tagCommand
+                        "removeGroup" -> Just <| groupReference RemoveGroup
                         _ -> Nothing
+
             in
-                case command of
-                    Just command ->
-                        Just (restParams, command)
-                    Nothing ->
-                        Nothing
+                parseFirstWord commandParser query
         )
 
 type Msg
@@ -121,6 +133,8 @@ update msg model =
                             "hideUi"
                         Ok (ToggleTag tag) ->
                             "toggleTag " ++ tag
+                        Ok (RemoveGroup id1 id2) ->
+                            "RemoveGroup " ++ (toString id1) ++ " " ++ toString id2
                         _ ->
                             ""
             in
