@@ -61,24 +61,25 @@ parseCommand query command =
                     Nothing ->
                         Err (MissingParameters command)
 
+type alias FuzzyResult a =
+    { state: FuzzyState a
+    , expandedQuery: String
+    , fuzzyMatches: (List String, List Bool)
+    }
 
-{-
-fuzzyParseCommand : String -> Command a -> Result (ParseError a) a
+type FuzzyState a
+    = MoreParams (List String)
+    | TooManyParams
+    | Done a
+
+fuzzyParseCommand : String -> Command a -> FuzzyResult a
 fuzzyParseCommand query command =
-    case command of
-        Terminal val ->
-            case query of
-                "" ->
-                    Ok val
-                _ ->
-                    Err ExtraParameters
-        NonTerminal greed suggestions parsingFunction ->
-            let
+    let 
+        inner : String -> Command a -> String -> FuzzyResult a
+        inner query command previousQuery =
 
-            in
-            case suggestions of
-                [] -> 
--}
+    in
+        inner query command ""
 
 
 fuzzyScore : String -> String -> (Int, List Bool)
