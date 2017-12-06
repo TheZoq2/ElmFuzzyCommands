@@ -5,7 +5,7 @@ import Html
 import Html.Events exposing (onInput)
 
 import CommandLine
-import CommandLine exposing (Command (..))
+import CommandLine exposing (Command (..), ParamGreed (..))
 
 searchOptions : List String
 searchOptions =
@@ -24,30 +24,6 @@ type CommandTest
     | RemoveGroup Int Int
     | HideUi
 
-separateFirstWord : String -> Maybe (String, String)
-separateFirstWord query =
-    let
-        words = String.words query
-        first = List.head words
-        rest = List.tail words
-    in
-        case (first, rest) of
-            (Just first, Just rest) -> Just (first, String.join " " rest)
-            _ -> Nothing
-
-
-parseFirstWord : (String -> Maybe a) -> String -> Maybe (String, a)
-parseFirstWord parser query =
-    case separateFirstWord query of
-        Just (first, rest) ->
-            case parser first of
-                Just val ->
-                    Just (rest, val)
-                Nothing ->
-                    Nothing
-        Nothing ->
-            Nothing
-
 
 intParser : String -> Maybe Int
 intParser word =
@@ -55,46 +31,39 @@ intParser word =
 
 intReference : (Int -> CommandTest) -> Command CommandTest
 intReference msg =
-    NonTerminal []
+    NonTerminal Word []
         (\query ->
-            case parseFirstWord intParser query of
-                Just (rest, val) ->
-                    let
-                        _ = Debug.log "rest" rest
-                        _ = Debug.log "val" val
-                    in
-                    Just(rest, Terminal (msg val))
+            case intParser query of
+                Just val ->
+                    Just <| Terminal (msg val)
                 Nothing ->
                     Nothing
         )
 
 groupReference : (Int -> Int -> CommandTest) -> Command CommandTest
 groupReference msg =
-    NonTerminal []
+    NonTerminal Word []
         (\query ->
-            case parseFirstWord intParser query of
-                Just (rest, val) ->
-                    Just(rest, intReference (msg val))
+            case intParser query of
+                Just val ->
+                    Just <| intReference (msg val)
                 Nothing ->
                     Nothing
         )
 
 topLevelCommand : List String -> Command CommandTest
 topLevelCommand tags =
-    NonTerminal ["hideUi", "toggleTag", "removeTag", "removeGroup"]
+    NonTerminal Word ["hideUi", "toggleTag", "removeTag", "removeGroup"]
         (\query ->
             let
-                tagCommand = NonTerminal tags (\query -> Just ("", Terminal <| ToggleTag query))
-
-                commandParser firstParam =
-                    case firstParam of
-                        "hideUi" -> Just <| Terminal HideUi
-                        "toggleTag" -> Just <| tagCommand
-                        "removeGroup" -> Just <| groupReference RemoveGroup
-                        _ -> Nothing
+                tagCommand msg = NonTerminal Rest tags (\query -> Just (Terminal (msg query)))
 
             in
-                parseFirstWord commandParser query
+                case query of
+                    "hideUi" -> Just <| Terminal HideUi
+                    "toggleTag" -> Just <| tagCommand ToggleTag
+                    "removeGroup" -> Just <| groupReference RemoveGroup
+                    _ -> Nothing
         )
 
 type Msg
