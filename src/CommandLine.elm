@@ -1,4 +1,4 @@
-module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..), parseCommand, ParseError(..), ParamGreed (..))
+module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..), parseCommand, ParseError(..), ParamGreed (..), separateFirstWord)
 
 import Char
 
@@ -22,16 +22,29 @@ type ParamGreed
   Separates a String into Just (firstWord, rest) if the string
   is non-empty or Nothing if it is empty
 -}
-separateFirstWord : String -> Maybe (String, String)
+separateFirstWord : String -> (String, String)
 separateFirstWord query =
-    let
-        words = String.words query
-        first = List.head words
-        rest = List.tail words
+    let 
+        (before, word, after) = 
+            String.foldl
+                (\char (before, word, after) ->
+                    case char of
+                        ' ' ->
+                            if word /= "" then
+                                (before, word, String.cons char after)
+                            else
+                                (String.cons char before, word, after)
+                        char ->
+                            if after == "" then
+                                (before, String.cons char word, after)
+                            else
+                                (before, word, String.cons char after)
+                )
+                ("", "", "")
+                query
     in
-        case (first, rest) of
-            (Just first, Just rest) -> Just (first, String.join " " rest)
-            _ -> Nothing
+        (String.reverse word, String.reverse after)
+
 
 parseCommand : String -> Command a -> Result (ParseError a) a
 parseCommand query command =
@@ -44,28 +57,29 @@ parseCommand query command =
                     Err ExtraParameters
         NonTerminal greed suggestions parsingFunction ->
             let
-                splitQuery =
+                (firstWord, restWords) =
                     case greed of
                         Word ->
                             separateFirstWord query
                         Rest ->
-                            Just (query, "")
+                            (query, "")
             in
-                case splitQuery of
-                    Just (param, rest) ->
+                case firstWord of
+                    "" ->
+                        Err (MissingParameters command)
+                    param ->
                         case (parsingFunction param) of
                             Just command ->
-                                parseCommand rest command
+                                parseCommand restWords command
                             Nothing ->
                                 Err InvalidParameter
-                    Nothing ->
-                        Err (MissingParameters command)
 
 type FuzzyState a
     = MoreParams (List String, List Bool)
     | TooManyParams
     | Done (List String, List Bool) a
 
+{-
 fuzzyParseCommand : String -> Command a -> (String, FuzzyState a)
 fuzzyParseCommand query command =
     let 
@@ -87,9 +101,11 @@ fuzzyParseCommand query command =
                 case splitQuery of
                     Nothing ->
                         let
+                            
                         in
     in
         inner query command ""
+-}
 
 
 fuzzyScore : String -> String -> (Int, List Bool)
