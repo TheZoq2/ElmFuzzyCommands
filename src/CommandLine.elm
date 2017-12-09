@@ -22,7 +22,7 @@ type ParamGreed
   Separates a String into Just (firstWord, rest) if the string
   is non-empty or Nothing if it is empty
 -}
-separateFirstWord : String -> (String, String)
+separateFirstWord : String -> (String, String, String)
 separateFirstWord query =
     let 
         (before, word, after) = 
@@ -43,7 +43,10 @@ separateFirstWord query =
                 ("", "", "")
                 query
     in
-        (String.reverse word, String.reverse after)
+        (String.reverse before, String.reverse word, String.reverse after)
+
+
+separateWords : String -> List String
 
 
 parseCommand : String -> Command a -> Result (ParseError a) a
@@ -57,12 +60,12 @@ parseCommand query command =
                     Err ExtraParameters
         NonTerminal greed suggestions parsingFunction ->
             let
-                (firstWord, restWords) =
+                (beforeWord, firstWord, restWords) =
                     case greed of
                         Word ->
                             separateFirstWord query
                         Rest ->
-                            (query, "")
+                            ("", String.trimLeft query, "")
             in
                 case firstWord of
                     "" ->
@@ -74,22 +77,20 @@ parseCommand query command =
                             Nothing ->
                                 Err InvalidParameter
 
-type FuzzyState a
+type FuzzyState
     = MoreParams (List String, List Bool)
     | TooManyParams
-    | Done (List String, List Bool) a
 
-{-
-fuzzyParseCommand : String -> Command a -> (String, FuzzyState a)
+fuzzyParseCommand : String -> Command a -> (String, FuzzyState)
 fuzzyParseCommand query command =
-    let 
+    let
         inner : String -> Command a -> String -> FuzzyResult a
         inner query command previousQuery =
             let
                 splitQuery =
                     case greed of
                         Word -> separateFirstWord query
-                        Rest -> Just (query, "")
+                        Rest -> (before, query, "")
 
                 fuzzyMatches query suggestions =
                     case suggestions of
@@ -98,14 +99,19 @@ fuzzyParseCommand query command =
                         suggestions ->
                             fuzzyMatch fuzzyScore suggestions query
             in
-                case splitQuery of
-                    Nothing ->
-                        let
-                            
-                        in
+                case command of
+                    NonTerminal suggestions command ->
+                        case splltQuery of
+                            -- Completely empty query
+                            (before, "", "") ->
+                            -- No word, but whitespace before
+                            (before, "", _) ->
+                            -- Word
+                            (_, word, rest) ->
+                    Terminal _ ->
+                        --Something
     in
         inner query command ""
--}
 
 
 fuzzyScore : String -> String -> (Int, List Bool)
