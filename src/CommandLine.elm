@@ -1,4 +1,4 @@
-module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..), parseCommand, ParseError(..), ParamGreed (..), separateFirstWord)
+module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..), parseCommand, ParseError(..), ParamGreed (..), expandCommand)
 
 import Char
 
@@ -46,8 +46,6 @@ separateFirstWord query =
         (String.reverse before, String.reverse word, String.reverse after)
 
 
-separateWords : String -> List String
-
 
 parseCommand : String -> Command a -> Result (ParseError a) a
 parseCommand query command =
@@ -78,40 +76,81 @@ parseCommand query command =
                                 Err InvalidParameter
 
 type FuzzyState
-    = MoreParams (List String, List Bool)
-    | TooManyParams
+    = MoreParams (List (String, List Bool))
+    | NoMoreInput
 
-fuzzyParseCommand : String -> Command a -> (String, FuzzyState)
-fuzzyParseCommand query command =
+
+type FuzzyError
+    -- Indicates that something went wrong when doing fuzzy expansion which
+    -- lead to trying to do fuzzy matching on a terminal
+    = ReachedTerminal
+    -- The query was expanded based on the suggestions, but the expansion
+    -- was not a vailid command
+    | MalformedCommand (List String) String
+
+
+{-|
+  Recursively expand parts of query based on the suggested strings for
+  each command.
+
+  Returns the best matching suggestion thus far, along with a `FuzzyState` which
+  contains match data for the last parameter or errors
+-}
+
+handleNonTerminalFuzz : String -> String -> ParamGreed -> List String -> (String -> Maybe (Command a)) -> (String, Result FuzzyError FuzzyState)
+handleNonTerminalFuzz previousQuery query greed suggestions parser =
     let
-        inner : String -> Command a -> String -> FuzzyResult a
-        inner query command previousQuery =
-            let
-                splitQuery =
-                    case greed of
-                        Word -> separateFirstWord query
-                        Rest -> (before, query, "")
-
-                fuzzyMatches query suggestions =
-                    case suggestions of
-                        [] -> 
-                            [query, List.repeat (List.length query) True]
-                        suggestions ->
-                            fuzzyMatch fuzzyScore suggestions query
-            in
-                case command of
-                    NonTerminal suggestions command ->
-                        case splltQuery of
-                            -- Completely empty query
-                            (before, "", "") ->
-                            -- No word, but whitespace before
-                            (before, "", _) ->
-                            -- Word
-                            (_, word, rest) ->
-                    Terminal _ ->
-                        --Something
+        (leadingWhitespace, currentSection, restQuery) =
+            case greed of
+                Word -> separateFirstWord query
+                Rest -> ("", query, "")
     in
-        inner query command ""
+        if (leadingWhitespace, currentSection) == ("", "") then
+            (previousQuery, Ok NoMoreInput)
+        else
+            let
+                expandedCommands = fuzzyMatch fuzzyScore suggestions currentSection 
+            in
+                -- Find all possible expansions of currentSection. Parse based on on the most
+                -- Likely expansion.
+                -- If that gives a terminal, return reached terminal
+                let
+                    bestExpansion =
+                        List.head expandedCommands
+                        |> Maybe.map Tuple.first
+                        |> Maybe.andThen (\expansion ->
+                                (Maybe.map (\command -> (expansion, command)) (parser expansion))
+                            )
+                in
+                    case bestExpansion of
+                        Just (expansion, NonTerminal nextGreed nextSuggestions nextParser) ->
+                            let
+                                nextResult =
+                                    handleNonTerminalFuzz
+                                        (previousQuery ++ expansion)
+                                        restQuery
+                                        nextGreed
+                                        nextSuggestions
+                                        nextParser
+                            in
+                                case nextResult of
+                                    (_, Ok NoMoreInput) ->
+                                        -- Return all suggestions for the current non-terminal
+                                        (previousQuery, Ok (MoreParams expandedCommands))
+                                    futureResult ->
+                                        futureResult
+                        Just (expansion, Terminal _) ->
+                            (previousQuery ++ expansion, Err ReachedTerminal)
+                        Nothing ->
+                            (previousQuery, Err <| MalformedCommand suggestions query)
+
+expandCommand : String -> Command a -> (String, Result FuzzyError FuzzyState)
+expandCommand query command =
+    case command of
+        NonTerminal greed suggestions parser ->
+            handleNonTerminalFuzz "" query greed suggestions parser
+        Terminal _ ->
+            ("", Err ReachedTerminal)
 
 
 fuzzyScore : String -> String -> (Int, List Bool)

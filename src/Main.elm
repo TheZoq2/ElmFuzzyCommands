@@ -72,13 +72,14 @@ type Msg
 
 type alias Model =
     { queryResult: List (String, List Bool)
+    , expandedQuery: String
     , commandResult: String
     }
 
 
 init : (Model, Cmd Msg)
 init =
-    (Model [] "", Cmd.none)
+    (Model [] "" "", Cmd.none)
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -86,11 +87,10 @@ update msg model =
     case msg of
         Input query ->
             let
-                fuzzyResult =
-                    CommandLine.fuzzyMatch
-                        CommandLine.fuzzyScore
-                        searchOptions
+                (expanded, _) =
+                    CommandLine.expandCommand
                         query
+                        (topLevelCommand ["yolo", "swag"])
 
                 parsedCommand = CommandLine.parseCommand
                     query
@@ -107,9 +107,10 @@ update msg model =
                         _ ->
                             ""
             in
-                ({model | 
-                    queryResult = fuzzyResult,
-                    commandResult = commandResult
+                ({model
+                    --queryResult = fuzzyResult,
+                    | expandedQuery = expanded
+                    , commandResult = commandResult
                 }, Cmd.none)
 
 
@@ -141,6 +142,7 @@ view model =
         [ input [onInput Input] []
         , ul []
             <| List.map matchRenderer model.queryResult
+        , p [] [text model.expandedQuery]
         , p [] [text model.commandResult]
         ]
 
