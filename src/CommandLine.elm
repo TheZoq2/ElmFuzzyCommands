@@ -192,4 +192,4 @@ fuzzyMatch scoringFunction options query =
                     (\option -> scoringFunction option query) options
     in
         List.map (\(string, (_, matched)) -> (string, matched))
-            <| List.sortBy (\(_, (score, _)) -> score) withScores
+            <| List.sortBy (\(_, (score, _)) -> -score) withScores
