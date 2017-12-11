@@ -103,7 +103,13 @@ handleNonTerminalFuzz previousQuery query greed suggestions parser =
         (leadingWhitespace, currentSection, restQuery) =
             case greed of
                 Word -> separateFirstWord query
-                Rest -> ("", query, "")
+                Rest -> ("", String.trimLeft query, "")
+
+        _ = Debug.log "" "============================================="
+        _ = Debug.log "leadingWhitespace" leadingWhitespace
+        _ = Debug.log "currentSection" currentSection
+        _ = Debug.log "restQuery" restQuery
+        _ = Debug.log "suggestions" suggestions
     in
         if (leadingWhitespace, currentSection) == ("", "") then
             (previousQuery, Ok NoMoreInput)
@@ -127,7 +133,7 @@ handleNonTerminalFuzz previousQuery query greed suggestions parser =
                             let
                                 nextResult =
                                     handleNonTerminalFuzz
-                                        (previousQuery ++ expansion)
+                                        (previousQuery ++ " " ++ expansion)
                                         restQuery
                                         nextGreed
                                         nextSuggestions
@@ -140,7 +146,7 @@ handleNonTerminalFuzz previousQuery query greed suggestions parser =
                                     futureResult ->
                                         futureResult
                         Just (expansion, Terminal _) ->
-                            (previousQuery ++ expansion, Err ReachedTerminal)
+                            (previousQuery ++ " " ++ expansion, Ok (MoreParams expandedCommands))
                         Nothing ->
                             (previousQuery, Err <| MalformedCommand suggestions query)
 

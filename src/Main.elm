@@ -53,7 +53,7 @@ groupReference msg =
 
 topLevelCommand : List String -> Command CommandTest
 topLevelCommand tags =
-    NonTerminal Word ["hideUi", "toggleTag", "removeTag", "removeGroup"]
+    NonTerminal Word ["hideUi", "toggleTag", "removeGroup"]
         (\query ->
             let
                 tagCommand msg = NonTerminal Rest tags (\query -> Just (Terminal (msg query)))
