@@ -5,7 +5,7 @@ import Html
 import Html.Events exposing (onInput)
 
 import CommandLine
-import CommandLine exposing (Command (..), ParamGreed (..))
+import CommandLine exposing (Command (..), ParamGreed (..), FuzzyError(..), FuzzyState(..))
 
 searchOptions : List String
 searchOptions =
@@ -71,7 +71,7 @@ type Msg
 
 
 type alias Model =
-    { queryResult: List (String, List Bool)
+    { suggestions: List (String, List Bool)
     , expandedQuery: String
     , commandResult: String
     }
@@ -87,7 +87,7 @@ update msg model =
     case msg of
         Input query ->
             let
-                (expanded, _) =
+                (expanded, suggestions) =
                     CommandLine.expandCommand
                         query
                         (topLevelCommand ["yolo", "swag"])
@@ -106,9 +106,13 @@ update msg model =
                             "RemoveGroup " ++ (toString id1) ++ " " ++ toString id2
                         _ ->
                             ""
+                newModel = case suggestions of
+                    Ok (MoreParams suggestions) ->
+                        { model | suggestions = suggestions }
+                    _ ->
+                        model
             in
-                ({model
-                    --queryResult = fuzzyResult,
+                ({newModel
                     | expandedQuery = expanded
                     , commandResult = commandResult
                 }, Cmd.none)
@@ -141,7 +145,7 @@ view model =
         []
         [ input [onInput Input] []
         , ul []
-            <| List.map matchRenderer model.queryResult
+            <| List.map matchRenderer model.suggestions
         , p [] [text model.expandedQuery]
         , p [] [text model.commandResult]
         ]

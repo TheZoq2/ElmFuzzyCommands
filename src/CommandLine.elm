@@ -1,4 +1,4 @@
-module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..), parseCommand, ParseError(..), ParamGreed (..), expandCommand)
+module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..), parseCommand, ParseError(..), ParamGreed (..), expandCommand, FuzzyState(..), FuzzyError(..))
 
 import Char
 
@@ -104,12 +104,6 @@ handleNonTerminalFuzz previousQuery query greed suggestions parser =
             case greed of
                 Word -> separateFirstWord query
                 Rest -> ("", String.trimLeft query, "")
-
-        _ = Debug.log "" "============================================="
-        _ = Debug.log "leadingWhitespace" leadingWhitespace
-        _ = Debug.log "currentSection" currentSection
-        _ = Debug.log "restQuery" restQuery
-        _ = Debug.log "suggestions" suggestions
     in
         if (leadingWhitespace, currentSection) == ("", "") then
             (previousQuery, Ok NoMoreInput)
@@ -124,7 +118,8 @@ handleNonTerminalFuzz previousQuery query greed suggestions parser =
                     bestExpansion =
                         List.head expandedCommands
                         |> Maybe.map Tuple.first
-                        |> Maybe.andThen (\expansion ->
+                        |> Maybe.withDefault currentSection
+                        |> (\expansion ->
                                 (Maybe.map (\command -> (expansion, command)) (parser expansion))
                             )
                 in
