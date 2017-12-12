@@ -103,47 +103,51 @@ handleNonTerminalFuzz previousQuery query greed suggestions parser =
         (leadingWhitespace, currentSection, restQuery) =
             case greed of
                 Word -> separateFirstWord query
-                Rest -> ("", String.trimLeft query, "")
+                Rest -> separateFirstWord query |> (\(init,word,rest) -> (init, word ++ rest, ""))
+
+        _ = Debug.log "==================================" "================================"
+        _ = Debug.log "leadingWhitespace" leadingWhitespace
+        _ = Debug.log "currentSection" currentSection
+        _ = Debug.log "restQuery" restQuery
     in
         if (leadingWhitespace, currentSection) == ("", "") then
             (previousQuery, Err NoMoreInput)
         else
             let
                 expandedCommands = fuzzyMatch fuzzyScore suggestions currentSection 
+
+                bestExpansion =
+                    List.head expandedCommands
+                    |> Maybe.map Tuple.first
+                    |> Maybe.withDefault currentSection
+                    |> (\expansion ->
+                            (Maybe.map (\command -> (expansion, command)) (parser expansion))
+                        )
             in
                 -- Find all possible expansions of currentSection. Parse based on on the most
                 -- Likely expansion.
                 -- If that gives a terminal, return reached terminal
-                let
-                    bestExpansion =
-                        List.head expandedCommands
-                        |> Maybe.map Tuple.first
-                        |> Maybe.withDefault currentSection
-                        |> (\expansion ->
-                                (Maybe.map (\command -> (expansion, command)) (parser expansion))
-                            )
-                in
-                    case bestExpansion of
-                        Just (expansion, NonTerminal nextGreed nextSuggestions nextParser) ->
-                            let
-                                nextResult =
-                                    handleNonTerminalFuzz
-                                        (previousQuery ++ " " ++ expansion)
-                                        restQuery
-                                        nextGreed
-                                        nextSuggestions
-                                        nextParser
-                            in
-                                case nextResult of
-                                    (_, Err NoMoreInput) ->
-                                        -- Return all suggestions for the current non-terminal
-                                        (previousQuery, Ok expandedCommands)
-                                    futureResult ->
-                                        futureResult
-                        Just (expansion, Terminal _) ->
-                            (previousQuery ++ " " ++ expansion, Ok expandedCommands)
-                        Nothing ->
-                            (previousQuery, Err <| MalformedCommand suggestions query)
+                case bestExpansion of
+                    Just (expansion, NonTerminal nextGreed nextSuggestions nextParser) ->
+                        let
+                            nextResult =
+                                handleNonTerminalFuzz
+                                    (previousQuery ++ " " ++ expansion)
+                                    restQuery
+                                    nextGreed
+                                    nextSuggestions
+                                    nextParser
+                        in
+                            case nextResult of
+                                (_, Err NoMoreInput) ->
+                                    -- Return all suggestions for the current non-terminal
+                                    (previousQuery ++ " " ++ expansion, Ok expandedCommands)
+                                futureResult ->
+                                    futureResult
+                    Just (expansion, Terminal _) ->
+                        (previousQuery ++ " " ++ expansion, Ok expandedCommands)
+                    Nothing ->
+                        (previousQuery, Err <| MalformedCommand suggestions query)
 
 expandCommand : String -> Command a -> (String, Result FuzzyError (List (String, List Bool)))
 expandCommand query command =
