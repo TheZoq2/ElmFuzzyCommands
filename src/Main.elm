@@ -5,7 +5,7 @@ import Html
 import Html.Events exposing (onInput)
 
 import CommandLine
-import CommandLine exposing (Command (..), ParamGreed (..), FuzzyError(..), FuzzyState(..))
+import CommandLine exposing (Command (..), ParamGreed (..), FuzzyError(..))
 
 searchOptions : List String
 searchOptions =
@@ -107,7 +107,7 @@ update msg model =
                         _ ->
                             ""
                 newModel = case suggestions of
-                    Ok (MoreParams suggestions) ->
+                    Ok suggestions ->
                         { model | suggestions = suggestions }
                     _ ->
                         model
