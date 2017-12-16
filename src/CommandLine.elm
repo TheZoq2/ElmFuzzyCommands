@@ -153,7 +153,17 @@ expandCommand : String -> Command a -> (String, Result FuzzyError (List (String,
 expandCommand query command =
     case command of
         NonTerminal greed suggestions parser ->
-            handleNonTerminalFuzz "" query greed suggestions parser
+            case handleNonTerminalFuzz "" query greed suggestions parser of
+                (expanded, Ok result) ->
+                    (expanded, Ok result)
+                (expanded, Err NoMoreInput) ->
+                    ( expanded
+                    , Ok <| List.map (\suggestion -> 
+                                (suggestion, List.repeat (String.length suggestion) False))
+                                suggestions
+                    )
+                (expanded, Err e) ->
+                    (expanded, Err e)
         Terminal _ ->
             ("", Err ReachedTerminal)
 
