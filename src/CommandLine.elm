@@ -104,11 +104,6 @@ handleNonTerminalFuzz previousQuery query greed suggestions parser =
             case greed of
                 Word -> separateFirstWord query
                 Rest -> separateFirstWord query |> (\(init,word,rest) -> (init, word ++ rest, ""))
-
-        _ = Debug.log "==================================" "================================"
-        _ = Debug.log "leadingWhitespace" leadingWhitespace
-        _ = Debug.log "currentSection" currentSection
-        _ = Debug.log "restQuery" restQuery
     in
         if (leadingWhitespace, currentSection) == ("", "") then
             (previousQuery, Err NoMoreInput)
