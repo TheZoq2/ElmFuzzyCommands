@@ -1,7 +1,30 @@
-module CommandLine exposing (fuzzyScore, fuzzyMatch, Command(..), parseCommand, ParseError(..), ParamGreed (..), expandCommand, FuzzyError(..))
+module CommandLine exposing
+    ( fuzzyScore
+    , fuzzyMatch
+    , Command(..)
+    , parseCommand
+    , ParseError(..)
+    , ParamGreed (..)
+    , expandCommand
+    , FuzzyError(..)
+    )
+
+{-|
+    Required doc comment
+
+    # Functions
+    @docs fuzzyScore, fuzzyMatch, expandCommand, fuzzyScore, parseCommand
+
+    # Types
+    @docs Command
+-}
 
 import Char
 
+{-|
+    A command that can be entered. Either produces a result itself, or the parser
+    for the next argument
+-}
 type Command a
     = Terminal a
     | NonTerminal ParamGreed (List String) (String -> Maybe (Command a))
@@ -30,6 +53,30 @@ separateFirstWord query =
                 (\char (before, word, after) ->
                     case char of
                         ' ' ->
+                            if word /= "" then
+                                (before, word, String.cons char after)
+                            else
+                                (String.cons char before, word, after)
+                        char ->
+                            if after == "" then
+                                (before, String.cons char word, after)
+                            else
+                                (before, word, String.cons char after)
+                )
+                ("", "", "")
+                query
+    in
+        (String.reverse before, String.reverse word, String.reverse after)
+
+
+separteFirstComma : String -> (String, String, String)
+separteFirstComma query =
+    let 
+        (before, word, after) = 
+            String.foldl
+                (\char (before, word, after) ->
+                    case char of
+                        ',' ->
                             if word /= "" then
                                 (before, word, String.cons char after)
                             else
