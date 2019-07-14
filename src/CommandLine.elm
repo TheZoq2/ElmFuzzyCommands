@@ -27,18 +27,18 @@ separateFirstWord query =
     let 
         (before, word, after) = 
             String.foldl
-                (\char (before, word, after) ->
+                (\char (before_, word_, after_) ->
                     case char of
                         ' ' ->
-                            if word /= "" then
-                                (before, word, String.cons char after)
+                            if word_ /= "" then
+                                (before_, word_, String.cons char after_)
                             else
-                                (String.cons char before, word, after)
-                        char ->
-                            if after == "" then
-                                (before, String.cons char word, after)
+                                (String.cons char before_, word_, after_)
+                        char_ ->
+                            if after_ == "" then
+                                (before_, String.cons char_ word_, after_)
                             else
-                                (before, word, String.cons char after)
+                                (before_, word_, String.cons char_ after_)
                 )
                 ("", "", "")
                 query
@@ -70,8 +70,8 @@ parseCommand query command =
                         Err (MissingParameters command)
                     param ->
                         case (parsingFunction param) of
-                            Just command ->
-                                parseCommand restWords command
+                            Just command_ ->
+                                parseCommand restWords command_
                             Nothing ->
                                 Err InvalidParameter
 

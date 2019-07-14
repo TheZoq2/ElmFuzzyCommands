@@ -3,6 +3,7 @@ module Main exposing (..)
 import Html exposing (..)
 import Html
 import Html.Events exposing (onInput)
+import Browser
 
 import CommandLine
 import CommandLine exposing (Command (..), ParamGreed (..), FuzzyError(..))
@@ -27,7 +28,7 @@ type CommandTest
 
 intParser : String -> Maybe Int
 intParser word =
-    Result.toMaybe <| String.toInt word
+    String.toInt word
 
 intReference : (Int -> CommandTest) -> Command CommandTest
 intReference msg =
@@ -56,7 +57,7 @@ topLevelCommand tags =
     NonTerminal Word ["hideUi", "toggleTag", "removeGroup"]
         (\query ->
             let
-                tagCommand msg = NonTerminal Rest tags (\query -> Just (Terminal (msg query)))
+                tagCommand msg = NonTerminal Rest tags (\query_ -> Just (Terminal (msg query_)))
 
             in
                 case query of
@@ -77,8 +78,8 @@ type alias Model =
     }
 
 
-init : (Model, Cmd Msg)
-init =
+init : flags -> (Model, Cmd Msg)
+init _ =
     (Model [] "" "", Cmd.none)
 
 
@@ -103,12 +104,12 @@ update msg model =
                         Ok (ToggleTag tag) ->
                             "toggleTag " ++ tag
                         Ok (RemoveGroup id1 id2) ->
-                            "RemoveGroup " ++ (toString id1) ++ " " ++ toString id2
+                            "RemoveGroup " ++ (String.fromInt id1) ++ " " ++ String.fromInt id2
                         _ ->
                             ""
                 newModel = case suggestions of
-                    Ok suggestions ->
-                        { model | suggestions = suggestions }
+                    Ok suggestions_ ->
+                        { model | suggestions = suggestions_ }
                     _ ->
                         model
             in
@@ -123,7 +124,7 @@ subscriptions model =
     Sub.none
 
 
-view : Model -> Html Msg
+view : Model -> Html.Html Msg
 view model =
     let
         matchRenderer : (String, List Bool) -> Html Msg
@@ -139,7 +140,7 @@ view model =
             p
                 []
                 <| List.map charRenderer
-                    <| List.map2 (,) (String.toList string) matches
+                    <| List.map2 Tuple.pair (String.toList string) matches
     in
     div
         []
@@ -151,11 +152,11 @@ view model =
         ]
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    Html.program
+    Browser.document
         { init = init
         , update = update
-        , view = view
+        , view = (\model -> {title = "Fuzzy command demo", body = [view model]})
         , subscriptions = subscriptions
         }
