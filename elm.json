@@ -1,7 +1,7 @@
 {
     "type": "package",
-    "name": "user/project",
-    "summary": "helpful summary of your project, less than 80 characters",
+    "name": "thezoq2/fuzzy-commands",
+    "summary": "An interface module based around fuzzy commands",
     "license": "BSD-3-Clause",
     "version": "1.0.0",
     "exposed-modules": [
